@@ -1,0 +1,24 @@
+# pdf files
+*.pdf
+
+# Build files for PICO
+*.elf
+*.uf2
+*.dis
+*.hex
+*.bin
+*.map
+
+# Build directories
+build/
+Debug/
+Release/
+
+# IDE settings
+.vscode/
+.idea/
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
