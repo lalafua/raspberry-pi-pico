@@ -2,7 +2,7 @@ from machine import Pin
 import utime
 
 # Onboard LED is on GPIO 25
-led = Pin(25, Pin.OUT)
+led = Pin(6, Pin.OUT)
 
 while True:
     led.toggle()
