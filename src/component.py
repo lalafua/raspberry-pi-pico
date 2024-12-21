@@ -47,7 +47,8 @@ class Keyboard():
                 if col.value():
                     self.last_press_time = current_time
                     row.off()
-                    return self.keymap[i][j]
+                    key = self.keymap[i][j]
+                    return key
             
             row.off()
     
