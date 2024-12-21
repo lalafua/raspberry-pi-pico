@@ -1,6 +1,3 @@
-# pdf files
-*.pdf
-
 # Build files for PICO
 *.elf
 *.uf2
