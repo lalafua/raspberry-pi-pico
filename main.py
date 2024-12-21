@@ -2,8 +2,8 @@ import machine, utime
 
 class LED():
     # LED Pin Configurations
-    GREEN_LED = 3
-    RED_LED = 4
+    GREEN_LED = 4
+    RED_LED = 3
     BLUE_LED = 6
     WHITE_LED = 8
 
@@ -18,16 +18,32 @@ class LED():
         self.led.off()
 
 class Motor_ctrl():
-    MOTOR = 15
-    def __init__(self, pin):
-        self.motor = machine.PWM(machine.Pin(pin))
-        self.motor.freq(10000)
-        self.motor.duty_u16(0)
+    MOTOR_PWM = 15
+    MOTOR_CTRL_AIN1 = 14
+    MOTOR_CTRL_AIN2 = 13
+
+    def __init__(self, motor_pwm = MOTOR_PWM, motor_ain1 = MOTOR_CTRL_AIN1, motor_ain2 = MOTOR_CTRL_AIN2):    
+        self.motor_pwm = machine.PWM(machine.Pin(motor_pwm))
+        self.motor_pwm.freq(10000)
+        self.motor_pwm.duty_u16(0)
+
+        self.motor_ctrl_ain1 = machine.Pin(motor_ain1, machine.Pin.OUT)
+        self.motor_ctrl_ain1.on()
+        self.motor_ctrl_ain2 = machine.Pin(motor_ain2, machine.Pin.OUT)
+        self.motor_ctrl_ain2.off()
 
     def set_duty(self, duty):
         duty = int(duty/100*65535)
-        self.motor.duty_u16(duty)
+        self.motor_pwm.duty_u16(duty)
         print('Motor speed: ', duty)
+
+    def stop(self):
+        self.motor_ctrl_ain1.off()
+        self.motor_ctrl_ain2.off()
+    
+    def start(self):
+        self.motor_ctrl_ain1.on()
+        self.motor_ctrl_ain2.off()
 
 class Keyboard():
     # Keyboard Matrix Configuration
@@ -37,7 +53,7 @@ class Keyboard():
     # Timing Configuration
     DEBOUNCE_TIME = 20
 
-    def __init__(self, row_pins, col_pins, debounce_time):
+    def __init__(self, row_pins = ROW_PINS, col_pins = COL_PINS, debounce_time = DEBOUNCE_TIME):
         # Initialize rows for output
         self.rows = [machine.Pin(pin, machine.Pin.OUT) for pin in row_pins] 
         # Initialize columns for input with pull-up
@@ -84,14 +100,15 @@ class Main:
         self.red_led = LED(LED.RED_LED)
         self.blue_led = LED(LED.BLUE_LED)
         self.white_led = LED(LED.WHITE_LED)
-        self.keyboard = Keyboard(Keyboard.ROW_PINS, Keyboard.COL_PINS, Keyboard.DEBOUNCE_TIME)   
-        self.motor = Motor_ctrl(Motor_ctrl.MOTOR)
+        self.keyboard = Keyboard()   
+        self.motor = Motor_ctrl()
 
         self.key_motor_map = {
-                         '1': lambda : (self.motor.set_duty(30) and self.white_led.on() and self.blue_led.off() and self.green_led.off()  and self.red_led.off()),
-                         '2': lambda : (self.motor.set_duty(60) and self.white_led.off() and self.blue_led.on() and self.green_led.off()  and self.red_led.off()),
-                         '3': lambda : (self.motor.set_duty(80) and self.white_led.off() and self.blue_led.off() and self.green_led.on()  and self.red_led.off()),
-                         'A': lambda : (self.motor.set_duty(100) and self.white_led.off() and self.blue_led.off() and self.green_led.off()  and self.red_led.on()),
+                         '1': lambda : (self.motor.set_duty(30), self.white_led.on(), self.blue_led.off(), self.green_led.off(), self.red_led.off()),
+                         '2': lambda : (self.motor.set_duty(60), self.white_led.off(), self.blue_led.on(), self.green_led.off(), self.red_led.off()),
+                         '3': lambda : (self.motor.set_duty(80), self.white_led.off(), self.blue_led.off(), self.green_led.on(), self.red_led.off()),
+                         'A': lambda : (self.motor.set_duty(100), self.white_led.off(), self.blue_led.off(), self.green_led.off(), self.red_led.on()),
+                         'D': lambda : (self.motor.set_duty(0), self.white_led.off(), self.blue_led.off(), self.green_led.off(), self.red_led.off())       
                          }   
 
     # def natural_wind(self, duty):
@@ -111,13 +128,10 @@ class Main:
 
     def run(self):
         while True:
+            self.motor.start()
             key = self.keyboard.get_key()
-            print(key)
-
-            # Control the motor speed
             if key in self.key_motor_map:
-                self.key_motor_map[key]()
-            
+                self.key_motor_map[key]()   
             
                 
         
