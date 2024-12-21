@@ -1,4 +1,4 @@
-import machine, utime
+import machine, utime, _thread
 
 class LED():
     # LED Pin Configurations
@@ -106,25 +106,71 @@ class Main:
         self.white_led = LED(LED.WHITE_LED)
         self.keyboard = Keyboard()   
         self.motor = Motor_ctrl()
+      
+        self.current_speed = 0
+        self.wind_type = None
+        self.running = True
 
         self.key_motor_map = {
-                         '1': lambda : (self.motor.set_duty(30), self.white_led.on(), self.blue_led.off(), self.green_led.off(), self.red_led.off()),
-                         '2': lambda : (self.motor.set_duty(60), self.white_led.off(), self.blue_led.on(), self.green_led.off(), self.red_led.off()),
-                         '3': lambda : (self.motor.set_duty(80), self.white_led.off(), self.blue_led.off(), self.green_led.on(), self.red_led.off()),
-                         'A': lambda : (self.motor.set_duty(100), self.white_led.off(), self.blue_led.off(), self.green_led.off(), self.red_led.on()),
-                         '4': lambda : (self.change_wind(self.NATURAL_WIND)),
-                         '5': lambda : (self.change_wind(self.SLEEP_WIND)),
-                         '6': lambda : (self.change_wind(self.NORMAL_WIND)),
-                         'D': lambda : (self.motor.set_duty(0), self.white_led.off(), self.blue_led.off(), self.green_led.off(), self.red_led.off())        
-                         }   
-        
-    def change_wind(self, wind_type):
-        while self.key != None:
-            if self.key == '4' or self.key == '5' or self.key == '6':
-                self.motor.start()
-                utime.sleep(wind_type)
-            else:
-                break
+            '1': lambda: self.change_speed(30),
+            '2': lambda: self.change_speed(60),
+            '3': lambda: self.change_speed(80),
+            'A': lambda: self.change_speed(100),
+            '4': lambda: self.change_wind_type(self.NATURAL_WIND),
+            '5': lambda: self.change_wind_type(self.SLEEP_WIND),
+            '6': lambda: self.change_wind_type(self.NORMAL_WIND),
+            'D': lambda: self.change_speed(0)
+        }
+
+        _thread.start_new_thread(self.wind_control_thread, ())
+
+    def change_speed(self, speed):
+        self.current_speed = speed
+        self.update_leds(speed)
+        if self.wind_type is None:
+            self.motor.set_duty(speed)
+
+    def update_leds(self, speed):
+        self.white_led.off()
+        self.blue_led.off()
+        self.green_led.off()
+        self.red_led.off()
+        if speed == 30:
+            self.white_led.on()
+        elif speed == 60:
+            self.blue_led.on()
+        elif speed == 80:
+            self.green_led.on()
+        elif speed == 100:
+            self.red_led.on()
+
+    def change_wind_type(self, wind_type):
+        self.wind_type = wind_type
+    
+    def wind_control_thread(self):
+        while True:
+            if self.wind_type == self.NATURAL_WIND:
+                print('Natural wind')
+                # Natural wind pattern
+                speeds = [self.current_speed, 0]
+                for speed in speeds:
+                    if self.wind_type != self.NATURAL_WIND:
+                        break
+                    self.motor.set_duty(int(speed))
+                    utime.sleep(1)
+            elif self.wind_type == self.SLEEP_WIND:
+                print('Sleep wind')
+                # Sleep wind pattern
+                speeds = [self.current_speed, 0]
+                for speed in speeds:
+                    if self.wind_type != self.SLEEP_WIND:
+                        break
+                    self.motor.set_duty(int(speed))
+                    utime.sleep(2)
+            elif self.wind_type == self.NORMAL_WIND:
+                print('Normal wind')
+                self.motor.set_duty(self.current_speed)
+            utime.sleep(0.1)    
 
     def run(self):
         while True:
