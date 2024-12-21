@@ -95,6 +95,10 @@ class Keyboard():
 
 
 class Main:
+    NATURAL_WIND = 1
+    SLEEP_WIND = 2
+    NORMAL_WIND = 0
+
     def __init__(self):
         self.green_led = LED(LED.GREEN_LED)
         self.red_led = LED(LED.RED_LED)
@@ -108,30 +112,26 @@ class Main:
                          '2': lambda : (self.motor.set_duty(60), self.white_led.off(), self.blue_led.on(), self.green_led.off(), self.red_led.off()),
                          '3': lambda : (self.motor.set_duty(80), self.white_led.off(), self.blue_led.off(), self.green_led.on(), self.red_led.off()),
                          'A': lambda : (self.motor.set_duty(100), self.white_led.off(), self.blue_led.off(), self.green_led.off(), self.red_led.on()),
-                         'D': lambda : (self.motor.set_duty(0), self.white_led.off(), self.blue_led.off(), self.green_led.off(), self.red_led.off())       
+                         '4': lambda : (self.change_wind(self.NATURAL_WIND)),
+                         '5': lambda : (self.change_wind(self.SLEEP_WIND)),
+                         '6': lambda : (self.change_wind(self.NORMAL_WIND)),
+                         'D': lambda : (self.motor.set_duty(0), self.white_led.off(), self.blue_led.off(), self.green_led.off(), self.red_led.off())        
                          }   
-
-    # def natural_wind(self, duty):
-    #     self.motor.set_duty(duty)
-    #     utime.sleep(1)
-    #     self.motor.set_duty(0)
-    #     utime.sleep(1)
-
-    # def sleep_wind(self, duty):
-    #     self.motor.set_duty(duty)
-    #     utime.sleep(2)
-    #     self.motor.set_duty(0)
-    #     utime.sleep(2)
-
-    # def normal_wind(self, duty):
-    #     self.motor.set_duty(duty)
+        
+    def change_wind(self, wind_type):
+        while self.key != None:
+            if self.key == '4' or self.key == '5' or self.key == '6':
+                self.motor.start()
+                utime.sleep(wind_type)
+            else:
+                break
 
     def run(self):
         while True:
             self.motor.start()
-            key = self.keyboard.get_key()
-            if key in self.key_motor_map:
-                self.key_motor_map[key]()   
+            self.key = self.keyboard.get_key()
+            if self.key in self.key_motor_map:
+                self.key_motor_map[self.key]()   
             
                 
         
