@@ -1,8 +1,5 @@
 import machine, utime
 
-RED_LED = 4
-BLUE_LED = 6
-
 class LED():
     def __init__(self, pin):
         self.led = machine.Pin(pin, machine.Pin.OUT)
@@ -14,7 +11,7 @@ class LED():
         self.led.off()
 
 class Keyboard():
-    def __init__(self, row_pins=[16,17,18,19], col_pins=[20,21,22,26]):
+    def __init__(self, row_pins, col_pins, debounce_time):
         # Initialize rows for output
         self.rows = [machine.Pin(pin, machine.Pin.OUT) for pin in row_pins] 
         # Initialize columns for input with pull-up
@@ -27,9 +24,7 @@ class Keyboard():
             ['7', '8', '9', 'C'],
             ['*', '0', '#', 'D']
         ]
-
-        # To debounce the keys
-        self.debounce_time = 20
+        self.debounce_time = debounce_time  
         self.last_press_time = 0
         
     def scan(self):
