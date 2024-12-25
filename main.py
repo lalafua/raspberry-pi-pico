@@ -1,4 +1,8 @@
 import machine, utime, _thread
+import framebuf, array
+import micropython
+from micropython import const
+
 
 class Motor_ctrl():
     MOTOR_PWM = 15
@@ -77,27 +81,25 @@ class Keyboard():
         return None
 
 # ssd1306 OLED Driver 
-import framebuf
-import micropython
 
 # Constants
-SET_CONTRAST = micropython.const(0x81)
-SET_ENTIRE_ON = micropython.const(0xA4)
-SET_NORM_INV = micropython.const(0xA6)
-SET_DISP = micropython.const(0xAE)
-SET_MEM_ADDR = micropython.const(0x20)
-SET_COL_ADDR = micropython.const(0x21)
-SET_PAGE_ADDR = micropython.const(0x22)
-SET_DISP_START_LINE = micropython.const(0x40)
-SET_SEG_REMAP = micropython.const(0xA0)
-SET_MUX_RATIO = micropython.const(0xA8)
-SET_COM_OUT_DIR = micropython.const(0xC0)
-SET_DISP_OFFSET = micropython.const(0xD3)
-SET_COM_PIN_CFG = micropython.const(0xDA)
-SET_DISP_CLK_DIV = micropython.const(0xD5)
-SET_PRECHARGE = micropython.const(0xD9)
-SET_VCOM_DESEL = micropython.const(0xDB)
-SET_CHARGE_PUMP = micropython.const(0x8D)
+SET_CONTRAST = const(0x81)
+SET_ENTIRE_ON = const(0xA4)
+SET_NORM_INV = const(0xA6)
+SET_DISP = const(0xAE)
+SET_MEM_ADDR = const(0x20)
+SET_COL_ADDR = const(0x21)
+SET_PAGE_ADDR = const(0x22)
+SET_DISP_START_LINE = const(0x40)
+SET_SEG_REMAP = const(0xA0)
+SET_MUX_RATIO = const(0xA8)
+SET_COM_OUT_DIR = const(0xC0)
+SET_DISP_OFFSET = const(0xD3)
+SET_COM_PIN_CFG = const(0xDA)
+SET_DISP_CLK_DIV = const(0xD5)
+SET_PRECHARGE = const(0xD9)
+SET_VCOM_DESEL = const(0xDB)
+SET_CHARGE_PUMP = const(0x8D)
 
 class SSD1306_I2C(framebuf.FrameBuffer):
     def __init__(self, width, height, i2c, addr=0x3C):
@@ -155,9 +157,13 @@ class SSD1306_I2C(framebuf.FrameBuffer):
         self.write_data(self.buffer)
 
 
-# DHT11 Sensor Driver
 import array
+import micropython
+import utime
+from machine import Pin
+from micropython import const
 
+# DHT11 Sensor Driver
 class InvalidChecksum(Exception):
     pass
  
@@ -168,7 +174,7 @@ MAX_UNCHANGED = const(100)
 MIN_INTERVAL_US = const(200000)
 HIGH_LEVEL = const(50)
 EXPECTED_PULSES = const(84)
- 
+
 class DHT11:
     _temperature: float
     _humidity: float
@@ -208,7 +214,7 @@ class DHT11:
         return self._temperature
  
     def _send_init_signal(self):
-        self._pin.init(machine.Pin.OUT, machine.Pin.PULL_DOWN)
+        self._pin.init(Pin.OUT, Pin.PULL_DOWN)
         self._pin.value(1)
         utime.sleep_ms(50)
         self._pin.value(0)
@@ -217,7 +223,7 @@ class DHT11:
     @micropython.native
     def _capture_pulses(self):
         pin = self._pin
-        pin.init(machine.Pin.IN, machine.Pin.PULL_UP)
+        pin.init(Pin.IN, Pin.PULL_UP)
  
         val = 1
         idx = 0
@@ -240,7 +246,7 @@ class DHT11:
                 unchanged = 0
             else:
                 unchanged += 1
-        pin.init(machine.Pin.OUT, machine.Pin.PULL_DOWN)
+        pin.init(Pin.OUT, Pin.PULL_DOWN)
         if idx != EXPECTED_PULSES:
             raise InvalidPulseCount(
                 "Expected {} but got {} pulses".format(EXPECTED_PULSES, idx)
@@ -303,9 +309,6 @@ class Main:
             print("Device address: ", hex(device))
         self.oled = SSD1306_I2C(128, 64, i2c)
 
-        dht11 = DHT11(machine.Pin(12, machine.Pin.OUT, machine.Pin.PULL_DOWN)) 
-        self.temp = (dht11.temperature)
-
         self.key_motor_map = {
             '1': lambda: self.change_speed(30),
             '2': lambda: self.change_speed(60),
@@ -325,25 +328,39 @@ class Main:
         self.current_speed = speed
         if self.wind_type is None:
             self.motor.set_duty(speed)
-            
 
     def change_wind_type(self, wind_type):
         self.wind_type = wind_type
-        
     
+    def get_temp(self):
+        last_temp_read = 0
+        temp_read_interval = 2000  
+        current_time = utime.ticks_ms()    
+        if utime.ticks_diff(current_time, last_temp_read) < temp_read_interval:
+            try:
+                dht11 = DHT11(machine.Pin(12, machine.Pin.OUT, machine.Pin.PULL_DOWN))  
+
+                self.last_temp_read = current_time
+                return dht11.temperature 
+            except Exception as e:
+                print('Failed to read temperature')
+                return 0
+
     def wind_control_thread(self):
         while True:
             self.oled.fill(0)
             self.oled.rect(0, 0, 128, 64, 1)
-            self.oled.text('WindSpeed:' + str(self.current_speed), 0, 16, 1)
-            self.oled.text('WindType:', 0, 24, 1)
+            self.oled.text('WindSpeed:' + str(self.current_speed), 0, 0, 1)
+            self.oled.text('WindType:', 0, 16, 1)
             self.oled.text('Threshold:' + str(self.TEMP_THRESHOLD), 0, 48, 1)
+            temp = 0
+            temp = self.get_temp()
 
-            if self.temp < self.TEMP_THRESHOLD:
-                self.oled.text('Temp:' + str(self.temp), 0, 32, 1)
+            if temp is not None and temp < self.TEMP_THRESHOLD:
+                self.oled.text('Temp:' +str(temp), 0, 32, 1)
                 if self.wind_type == self.NATURAL_WIND:
                     print('Natural wind')
-                    self.oled.text('WindType:Natural', 0, 32, 1)
+                    self.oled.text('WindType:Natural', 0, 16, 1)
                     # Natural wind pattern
                     speeds = [self.current_speed, 0]
                     for speed in speeds:
@@ -353,7 +370,7 @@ class Main:
                         utime.sleep(1)
                 elif self.wind_type == self.SLEEP_WIND:
                     print('Sleep wind')
-                    self.oled.text('WindType:Sleep', 0, 32, 1)
+                    self.oled.text('WindType:Sleep', 0, 16, 1)
                     # Sleep wind pattern
                     speeds = [self.current_speed, 0]
                     for speed in speeds:
@@ -363,18 +380,19 @@ class Main:
                         utime.sleep(2)
                 elif self.wind_type == self.NORMAL_WIND:
                     print('Normal wind')
-                    self.oled.text('WindType:Normal', 0, 32, 1)
+                    self.oled.text('WindType:Normal', 0, 16, 1)
                     self.motor.set_duty(self.current_speed)
                 
             else:
-                utime.sleep(5)
                 self.oled.text('Temp:Overheat!', 0, 32, 1)
+                utime.sleep(5)
+            utime.sleep_ms(100)
+
             self.oled.show()
         
     def set_temp_threshold(self, threshold):
         self.TEMP_THRESHOLD = threshold
         
-
     def main(self):
         while True:
             self.motor.start()
