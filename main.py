@@ -175,7 +175,7 @@ class Main:
 
         self.temp_read_interval = 2000
         self.last_time_read = 0
-        self.sensor = dht.DHT11(machine.Pin(28))
+        self.sensor = dht.DHT11(machine.Pin(0))
 
         i2c = machine.I2C(0, scl=machine.Pin(5), sda=machine.Pin(4), freq=200000)
         # Scan for I2C devices
@@ -199,7 +199,7 @@ class Main:
             '5': lambda: self.change_wind_type(self.SLEEP_WIND),
             '6': lambda: self.change_wind_type(self.NORMAL_WIND),
             'D': lambda: self.change_speed(0),
-            '7': lambda: self.set_temp_threshold(30),
+            '7': lambda: self.set_temp_threshold(27),
             '8': lambda: self.set_temp_threshold(50),
         }
 
@@ -221,54 +221,54 @@ class Main:
                 self.temp = self.sensor.temperature()
                 self.hum = self.sensor.humidity()
                 print("Temperature: {}".format(self.temp))
-                print("Humidity: {}".format(self.hum))
                 self.last_time_read = current_time
             except OSError as e:
                 print('Failed to read sensor.')
+        else:
+            pass
         return self.temp
 
     def wind_control_thread(self):
+        wind_type_text = {
+            self.NATURAL_WIND: 'Natural',
+            self.SLEEP_WIND: 'Sleep',
+            self.NORMAL_WIND: 'Normal'
+        }
+        
+        wind_patterns = {
+            self.NATURAL_WIND: ([1, 0], 1),  # (speeds multiplier, sleep time)
+            self.SLEEP_WIND: ([1, 0], 2),
+            self.NORMAL_WIND: ([1], 0)
+        }
+
         while True:
+            # Update display
             self.oled.fill(0)
             self.oled.rect(0, 0, 128, 64, 1)
-            self.oled.text('WindSpeed:' + str(self.current_speed), 0, 0, 1)
-            self.oled.text('WindType:', 0, 16, 1)
-            self.oled.text('Threshold:' + str(self.TEMP_THRESHOLD), 0, 48, 1)
-            temp = self.get_temp()
+            self.oled.text(f'WindSpeed:{self.current_speed}', 0, 0, 1)
+            self.oled.text(f'Threshold:{self.TEMP_THRESHOLD}', 0, 48, 1)
+            self.oled.text(f'WindType:', 0, 16, 1)
+            self.oled.text(f'Temp:{self.get_temp()}', 0, 32, 1)
 
-            if temp is not None and temp < self.TEMP_THRESHOLD:
-                self.oled.text('Temp:' +str(temp), 0, 32, 1)
-                if self.wind_type == self.NATURAL_WIND:
-                    print('Natural wind')
-                    self.oled.text('WindType:Natural', 0, 16, 1)
-                    # Natural wind pattern
-                    speeds = [self.current_speed, 0]
-                    for speed in speeds:
-                        if self.wind_type != self.NATURAL_WIND:
+            if self.get_temp() is not None and self.get_temp() < self.TEMP_THRESHOLD:    
+                if self.wind_type in wind_type_text:
+                    self.oled.text(f'WindType:{wind_type_text[self.wind_type]}', 0, 16, 1)
+                    pattern, sleep_time = wind_patterns[self.wind_type]
+                    
+                    for speed_mult in pattern:
+                        if self.wind_type != self.wind_type:  # Check if type changed
                             break
-                        self.motor.set_duty(int(speed))
-                        utime.sleep(1)
-                elif self.wind_type == self.SLEEP_WIND:
-                    print('Sleep wind')
-                    self.oled.text('WindType:Sleep', 0, 16, 1)
-                    # Sleep wind pattern
-                    speeds = [self.current_speed, 0]
-                    for speed in speeds:
-                        if self.wind_type != self.SLEEP_WIND:
-                            break
-                        self.motor.set_duty(int(speed))
-                        utime.sleep(2)
-                elif self.wind_type == self.NORMAL_WIND:
-                    print('Normal wind')
-                    self.oled.text('WindType:Normal', 0, 16, 1)
-                    self.motor.set_duty(self.current_speed)
-                
+                        self.motor.set_duty(int(self.current_speed * speed_mult))
+                        if sleep_time:
+                            utime.sleep(sleep_time)
             else:
-                self.oled.text('Temp:Overheat!', 0, 32, 1)
-                utime.sleep(5)
-            utime.sleep_ms(100)
-
+                self.oled.text(f'Temp too high !', 0, 32, 1)
+                self.oled.show()
+                self.motor.set_duty(0)
+                utime.sleep(10)
+                
             self.oled.show()
+            utime.sleep_ms(100)
         
     def set_temp_threshold(self, threshold):
         self.TEMP_THRESHOLD = threshold
