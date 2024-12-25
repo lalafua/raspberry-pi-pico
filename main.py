@@ -280,7 +280,7 @@ class Main:
     SLEEP_WIND = 2
     NORMAL_WIND = 0
 
-    TEMP_THRESHOLD = 0
+    TEMP_THRESHOLD = 100
 
     def __init__(self):
         self.keyboard = Keyboard()   
@@ -302,6 +302,9 @@ class Main:
         for device in devices:
             print("Device address: ", hex(device))
         self.oled = SSD1306_I2C(128, 64, i2c)
+
+        dht11 = DHT11(machine.Pin(12, machine.Pin.OUT, machine.Pin.PULL_DOWN)) 
+        self.temp = (dht11.temperature)
 
         self.key_motor_map = {
             '1': lambda: self.change_speed(30),
@@ -333,37 +336,43 @@ class Main:
             self.oled.fill(0)
             self.oled.rect(0, 0, 128, 64, 1)
             self.oled.text('WindSpeed:' + str(self.current_speed), 0, 16, 1)
-            self.oled.text('WindType:', 0, 32, 1)
-            if self.wind_type == self.NATURAL_WIND:
-                print('Natural wind')
-                self.oled.text('WindType:Natural', 0, 32, 1)
-                # Natural wind pattern
-                speeds = [self.current_speed, 0]
-                for speed in speeds:
-                    if self.wind_type != self.NATURAL_WIND:
-                        break
-                    self.motor.set_duty(int(speed))
-                    utime.sleep(1)
-            elif self.wind_type == self.SLEEP_WIND:
-                print('Sleep wind')
-                self.oled.text('WindType:Sleep', 0, 32, 1)
-                # Sleep wind pattern
-                speeds = [self.current_speed, 0]
-                for speed in speeds:
-                    if self.wind_type != self.SLEEP_WIND:
-                        break
-                    self.motor.set_duty(int(speed))
-                    utime.sleep(2)
-            elif self.wind_type == self.NORMAL_WIND:
-                print('Normal wind')
-                self.oled.text('WindType:Normal', 0, 32, 1)
-                self.motor.set_duty(self.current_speed)
+            self.oled.text('WindType:', 0, 24, 1)
+            self.oled.text('Threshold:' + str(self.TEMP_THRESHOLD), 0, 48, 1)
+
+            if self.temp < self.TEMP_THRESHOLD:
+                self.oled.text('Temp:' + str(self.temp), 0, 32, 1)
+                if self.wind_type == self.NATURAL_WIND:
+                    print('Natural wind')
+                    self.oled.text('WindType:Natural', 0, 32, 1)
+                    # Natural wind pattern
+                    speeds = [self.current_speed, 0]
+                    for speed in speeds:
+                        if self.wind_type != self.NATURAL_WIND:
+                            break
+                        self.motor.set_duty(int(speed))
+                        utime.sleep(1)
+                elif self.wind_type == self.SLEEP_WIND:
+                    print('Sleep wind')
+                    self.oled.text('WindType:Sleep', 0, 32, 1)
+                    # Sleep wind pattern
+                    speeds = [self.current_speed, 0]
+                    for speed in speeds:
+                        if self.wind_type != self.SLEEP_WIND:
+                            break
+                        self.motor.set_duty(int(speed))
+                        utime.sleep(2)
+                elif self.wind_type == self.NORMAL_WIND:
+                    print('Normal wind')
+                    self.oled.text('WindType:Normal', 0, 32, 1)
+                    self.motor.set_duty(self.current_speed)
+                
+            else:
+                utime.sleep(5)
+                self.oled.text('Temp:Overheat!', 0, 32, 1)
             self.oled.show()
         
-    def set_temp_threshold(self, temp):
-        self.TEMP_THRESHOLD = temp
-
-    def overheating_protection(self):
+    def set_temp_threshold(self, threshold):
+        self.TEMP_THRESHOLD = threshold
         
 
     def main(self):
@@ -372,7 +381,6 @@ class Main:
             self.key = self.keyboard.get_key()
             if self.key in self.key_motor_map:
                 self.key_motor_map[self.key]()   
-            
                 
         
 if __name__ == '__main__':
