@@ -159,9 +159,9 @@ class SSD1306_I2C(framebuf.FrameBuffer):
 
 
 class Main:
-    NATURAL_WIND = 1
-    SLEEP_WIND = 2
-    NORMAL_WIND = 0
+    NATURAL_WIND = const(1)
+    SLEEP_WIND = const(2)
+    NORMAL_WIND = const(0)
 
     TEMP_THRESHOLD = 100
 
