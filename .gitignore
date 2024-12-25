@@ -1,6 +1,5 @@
 # Build files for PICO
 *.elf
-*.uf2
 *.dis
 *.hex
 *.bin
