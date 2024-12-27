@@ -1,6 +1,5 @@
 # Build files for PICO
 *.elf
-*.uf2
 *.dis
 *.hex
 *.bin
@@ -19,3 +18,7 @@ Release/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
+
+# Cache files
+__pycache__/
+*.pyc
