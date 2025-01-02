@@ -194,12 +194,13 @@ class Main:
             '1': lambda: self.change_speed(30),
             '2': lambda: self.change_speed(60),
             '3': lambda: self.change_speed(80),
+
             'A': lambda: self.change_speed(100),
             '4': lambda: self.change_wind_type(self.NATURAL_WIND),
             '5': lambda: self.change_wind_type(self.SLEEP_WIND),
             '6': lambda: self.change_wind_type(self.NORMAL_WIND),
             'D': lambda: self.change_speed(0),
-            '7': lambda: self.set_temp_threshold(27),
+            '7': lambda: self.set_temp_threshold(24),
             '8': lambda: self.set_temp_threshold(50),
         }
 
